@@ -1,0 +1,392 @@
+---
+title: "Assignment1"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+date: "2022-11-11"
+---
+
+```{r}
+
+rm(list=ls())  
+
+library(psych) #fa()
+library(lavaan) #cfa()
+library(MASS)
+library(paran) #procedure Horn
+
+#function composite reliability
+compositerel<-function(x){
+  A<-(sum(x))^2
+  B<-sum(1-x^2)
+  return(A/(A+B))
+}
+
+
+#load data
+load("/Users/yavuzhanyavuz/Desktop/Leuven/Multivariate/cosmetics.Rdata")
+
+#compute centered data
+ccosmetics<-cosmetics
+ccosmetics[,1:18]<-scale(cosmetics[,1:18],center=TRUE,scale=FALSE)
+
+```
+
+## a. Use CFA to construct a measurement model for the Attitude items
+
+```{r}
+#step1:confirmatory factor analysis model with 3 correlated latent variables
+
+#measurement model latent variables
+cfa1<-' Att_organic=~1*Attitude_organic1+Attitude_organic2+Attitude_organic3         
+        Att_packaging=~1*Attitude_packaging1+Attitude_packaging2+Attitude_packaging3
+        Att_crueltyfree=~1*Attitude_crueltyfree1+Attitude_crueltyfree2+Attitude_crueltyfree3
+        '
+
+#fit model on covariance matrix
+fitcfa1<-cfa(cfa1,ccosmetics[,1:9])
+
+#print fitmeasures
+fitmeasures(fitcfa1,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+
+#summary of results
+summary(fitcfa1,fit.measures=TRUE)
+
+#print standardized solution
+standardizedSolution(fitcfa1)
+
+
+#reliability factor scores
+d<-standardizedSolution(fitcfa1)
+#composite reliability attitude_organic
+compositerel(d[1:3,4])
+#composite reliability attitude_packaging
+compositerel(d[4:6,4])
+#composite reliability attitude_crueltyfree
+compositerel(d[7:9,4])
+
+#overview table composite reliability
+factorscore<-c("attitude_organic","attitude_packaging","attitude_crueltyfree")
+reliability<-round(c(compositerel(d[1:3,4]),compositerel(d[4:6,4]),compositerel(d[7:9,4])),3)
+data.frame(factorscore,reliability)
+
+## step2: correlated error terms for variables measured using the same method #!
+cfa2<-' Att_organic=~1*Attitude_organic1+Attitude_organic2+Attitude_organic3         
+        Att_packaging=~1*Attitude_packaging1+Attitude_packaging2+Attitude_packaging3
+        Att_crueltyfree=~1*Attitude_crueltyfree1+Attitude_crueltyfree2+Attitude_crueltyfree3
+        
+        Att_organic ~~1*Att_organic
+        Att_packaging ~~ 1*Att_packaging
+        Att_crueltyfree ~~1*Att_crueltyfree
+        
+        Att_organic ~~ Att_packaging
+        Att_packaging ~~ Att_crueltyfree
+        Att_organic ~~ Att_crueltyfree
+        
+        Attitude_organic1~~a*Attitude_packaging1
+        Attitude_organic1~~a*Attitude_crueltyfree1
+        Attitude_packaging1~~a*Attitude_crueltyfree1
+        
+        Attitude_organic2~~b*Attitude_packaging2
+        Attitude_organic2~~b*Attitude_crueltyfree2
+        Attitude_packaging2~~b*Attitude_crueltyfree2
+        
+        Attitude_organic3~~c*Attitude_packaging3
+        Attitude_organic3~~c*Attitude_crueltyfree3
+        Attitude_packaging3~~c*Attitude_crueltyfree3
+        '
+#fit model on covariance matrix
+fitcfa2<-cfa(cfa2,ccosmetics)
+
+#print fitmeasures
+fitmeasures(fitcfa2,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+
+#summary of results
+summary(fitcfa2,fit.measures=TRUE)
+
+
+lavInspect(fitcfa2, "cor.lv")
+#print standardized solution
+standardizedSolution(fitcfa2)
+
+```
+
+## b. Use CFA to construct a measurement model for the Behavior-Intention items
+
+After loading the data, we compute centered variables. We fit a CFA model with 3 correlated latent variables for the and print fit measures and the standardized solution.
+
+```{r}
+#step1:confirmatory factor analysis model with 3 correlated latent variables
+cfa3<-' BI_organic=~1*BI_organic1+BI_organic2+BI_organic3         
+        BI_packaging=~1*BI_packaging1+BI_packaging2+BI_packaging3
+        BI_crueltyfree=~1*BI_crueltyfree1+BI_crueltyfree2+BI_crueltyfree3
+        '
+
+#fit model on covariance matrix
+fitcfa3<-cfa(cfa3,ccosmetics)
+
+#print fitmeasures
+fitmeasures(fitcfa3,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+
+#summary of results
+summary(fitcfa3,fit.measures=TRUE)
+
+#print standardized solution
+standardizedSolution(fitcfa3)
+```
+
+The **fit measures** indicate that the model is rejected by an absolute goodness of fit test, i.e. the fit of the model is significantly lower than for a perfectly fitting model (chi-square=147.8, df=24, p\<.001). Descriptive fit measures indicate that the model does not fit the covariance matrix well: CFI (.914) and TLI (.871) both below the cutoff of .95 which indicates good fit. In addition, RMSEA (.185) and SRMR (.033) so that the cutoff value for good model fit(cutoff\<.08) is only satisfied for SRMR. Given these results, further modifications to the model are needed.
+
+**Factor correlations**:From the covariances matrix, we can see the factors have positive significant correlations.
+
+As can be seen in the standardized solution, all variables have significant and positive standardized loadings that exceed 0.7. Hence, the variables have sufficient reliability so that **convergent validity** is satisfied for the measurement model. Furthermore, **divergent validity** is also satisfied as all latent variables have moderate correlations that are significantly smaller than 1.
+
+Finally, the composite reliability of all the factor scores is good as it exceeds .80.
+
+```{r}
+#reliability factor scores
+d<-standardizedSolution(fitcfa3)
+#composite reliability BI_organic
+compositerel(d[1:3,4])
+#composite reliability BI_packaging
+compositerel(d[4:6,4])
+#composite reliability BI_crueltyfree
+compositerel(d[7:9,4])
+
+
+#overview table composite reliability
+factorscore<-c("BI_organic","BI_packaging","BI_crueltyfree")
+reliability<-round(c(compositerel(d[1:3,4]),compositerel(d[4:6,4]),compositerel(d[7:9,4])),3)
+data.frame(factorscore,reliability)
+```
+
+Next we extend the CFA model by including correlated error terms, which we imposed the constraint of equal residual correlations, for all pairs of items that focus on the same aspect.
+
+```{r}
+## step2: correlated error terms for variables measured using the same method
+cfa4<-' BI_organic=~1*BI_organic1+BI_organic2+BI_organic3         
+        BI_packaging=~1*BI_packaging1+BI_packaging2+BI_packaging3
+        BI_crueltyfree=~1*BI_crueltyfree1+BI_crueltyfree2+BI_crueltyfree3
+        
+        BI_organic ~~1*BI_organic
+        BI_packaging ~~ 1*BI_packaging
+        BI_crueltyfree ~~1*BI_crueltyfree
+        
+        BI_organic ~~ BI_packaging
+        BI_packaging ~~ BI_crueltyfree
+        BI_organic ~~ BI_crueltyfree
+        
+        BI_organic1~~a*BI_packaging1
+        BI_organic1~~a*BI_crueltyfree1
+        BI_packaging1~~a*BI_crueltyfree1
+        
+        BI_organic2~~b*BI_packaging2
+        BI_organic2~~b*BI_crueltyfree2
+        BI_packaging2~~b*BI_crueltyfree2
+        
+        BI_organic3~~c*BI_packaging3
+        BI_organic3~~c*BI_crueltyfree3
+        BI_packaging3~~c*BI_crueltyfree3
+        '
+#fit model on covariance matrix
+fitcfa4<-cfa(cfa4,ccosmetics[,10:18])
+
+#print fitmeasures
+fitmeasures(fitcfa4,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+
+#summary of results
+summary(fitcfa4,fit.measures=TRUE)
+
+#print standardized solution
+standardizedSolution(fitcfa4)
+```
+
+The **fit measures** of the extended CFA model indicate that the model fits the data well(chi-square=31.251, df=24, p=.147) and has excellent descriptive goodness of fit.CFI=.995 and TLI=.992 both exceed the cutoff of .95 which indicates good fit, RMSEA (.045) and SRMR (.074) also indicate a good fit as they are well below the cutoff of .08. Given the results, the fit measures of the CFA models fitted in the second step is much better than the first step.
+
+The results of the correlated error model indicate that items focus on the same aspect have significant positive **residual correlations**. i.e. for "making an effort to buy", the residual correlation is around .33; for "recommending", the residual correlation is around 0.51; for "checking the sustainable label", the residual correlation is between .22-.32.
+
+## c.Build a structural equation model to evaluate the impact of attitude on behavior intention
+
+#We use the **sem()** function to fit the structural equation model on the covariance matrix, and print fit measures and model output (including the standardized solution).
+
+```{r}
+##first step
+sem1 <-'# measurement model
+        Att_organic=~Attitude_organic1+Attitude_organic2+Attitude_organic3         
+        Att_packaging=~Attitude_packaging1+Attitude_packaging2+Attitude_packaging3
+        Att_crueltyfree=~Attitude_crueltyfree1+Attitude_crueltyfree2+Attitude_crueltyfree3
+        BI_organic=~1*BI_organic1+BI_organic2+BI_organic3         
+        BI_packaging=~1*BI_packaging1+BI_packaging2+BI_packaging3
+        BI_crueltyfree=~1*BI_crueltyfree1+BI_crueltyfree2+BI_crueltyfree3
+        
+        # structural model(regressions)
+        BI_organic~Att_organic
+        BI_packaging~Att_packaging
+        BI_crueltyfree~Att_crueltyfree
+        
+        #variance latent variables
+        Att_organic~~Att_organic
+        Att_packaging~~Att_packaging
+        Att_crueltyfree~~Att_crueltyfree
+        BI_organic~~1*BI_organic
+        BI_packaging~~1*BI_packaging
+        BI_crueltyfree~~1*BI_crueltyfree'
+
+fitsem1 <- sem(sem1, data =ccosmetics)
+summary(fitsem1, fit.measure = TRUE)
+standardizedSolution(fitsem1)
+fitmeasures(fitsem1,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+```
+
+```{r}
+##second step
+sem2 <-'# measurement model
+        Att_organic=~Attitude_organic1+Attitude_organic2+Attitude_organic3         
+        Att_packaging=~Attitude_packaging1+Attitude_packaging2+Attitude_packaging3
+        Att_crueltyfree=~Attitude_crueltyfree1+Attitude_crueltyfree2+Attitude_crueltyfree3
+        BI_organic=~1*BI_organic1+BI_organic2+BI_organic3         
+        BI_packaging=~1*BI_packaging1+BI_packaging2+BI_packaging3
+        BI_crueltyfree=~1*BI_crueltyfree1+BI_crueltyfree2+BI_crueltyfree3
+        
+        # structural model(regressions)
+        BI_organic~a*Att_organic
+        BI_packaging~a*Att_packaging
+        BI_crueltyfree~a*Att_crueltyfree
+        
+        #variance latent variables
+        Att_organic~~Att_organic
+        Att_packaging~~Att_packaging
+        Att_crueltyfree~~Att_crueltyfree
+        BI_organic~~1*BI_organic
+        BI_packaging~~1*BI_packaging
+        BI_crueltyfree~~1*BI_crueltyfree'
+
+
+fitsem2 <- sem(sem2, data =ccosmetics)
+summary(fitsem2, fit.measure = TRUE)
+standardizedSolution(fitsem2)
+fitmeasures(fitsem2,c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+```
+
+The results indicates that the step2 model is still rejected by a good ness of fit test(chi-square=389.9, df=131, p\<.001). And for the descriptive fit, the model does not fit the covariance matrix well(CFI=.897, TLI=.880, RMSEA=.115, SRMR=.194).
+
+From the result, we can see that there is a significant positive effect of importance of attitude on behavior intention. With a standard deviation increase in each of the attention score, the score on behavior intention factor will each increase by 11.41 standard deviation.
+
+```{r}
+#model fit comparison
+anova(fitsem1, fitsem2)
+```
+
+Since we accept the null hypothesis using the chi-squared difference of fit test, this means that we do not need to impose the constraint that the 3 population regression coefficients of the structural model are equal.But according to the value of AIC and BIC, the second model is better than the first one.
+
+From the standardized solution, we can find that all variables of behavior intention have significant and positive standardized loadings that exceed 0.7. But for attitude, only the reliabilities of att_organic1, att_crueltyfree1 and att_crueltyfree3 are exceed 0.7.
+
+The factor score of Att_organic and Att_packaging have a composite reliability of .59 and .67, so they don't have acceptance reliability. But for Att_crueltyfree, BI_organic, BI_packaging and BI_crueltyfree, the composite reliabilities are 0.74, 0.83, 0.84 and 0.89, so they all have acceptance reliability.
+
+Attitude items all have significant positive effect on behavior intention items(Att_organic on BI_organic, Att_packaging on BI_packaging and Att_Crueltyfree on BI_crueltyfree. The estimated correlations between each of them are 0.522, 0.530 and 0.573.
+
+```{r}
+load("/Users/yavuzhanyavuz/Desktop/Leuven/Multivariate/benefits.Rdata")
+
+library(broom)
+library(heplots)
+library(candisc)
+#conduct canonical correlation analysis 
+cancor.out<-cancor(cbind(SL_pensioners,SL_unemployed,SL_old_gvntresp,SL_unemp_gvntresp) 
+                   ~SB_strain_economy+SB_prevent_poverty+SB_equal_society  
+                   +SB_taxes_business+SB_make_lazy+SB_caring_others  
+                   +unemployed_notmotivated+SB_often_lessthanentitled
+                   +SB_often_notentitled,data=benefits)
+summary(cancor.out) 
+
+#print canonical loadings 
+cancor.out$structure$X.xscores 
+cancor.out$structure$Y.yscores
+
+#print redundancies 
+redu<-redundancy(cancor.out) 
+round(redu$Xcan,3) 
+round(redu$Ycan,3)
+
+#computation redundancies from output 
+R2tu<-cancor.out$cancor^2 
+VAFYbyt<-apply(cancor.out$structure$Y.yscores^2,2,sum)/4
+redund<-R2tu*VAFYbyt 
+round(cbind(R2tu,VAFYbyt,redund,total=cumsum(redund)),3)
+
+
+#split data in two parts and standardize data 
+train<-benefits[seq(2,nrow(benefits),by=2),] 
+valid<-benefits[seq(1,nrow(benefits),by=2),] 
+train[,2:14]<-scale(train[,2:14],center=TRUE,scale=TRUE) 
+valid[,2:14]<-scale(valid[,2:14],center=TRUE,scale=TRUE) 
+
+#conduct CCA on calibration data 
+cancor.train<-cancor(cbind(SL_pensioners,SL_unemployed,SL_old_gvntresp,SL_unemp_gvntresp) 
+                     ~SB_strain_economy+SB_prevent_poverty+SB_equal_society  
+                     +SB_taxes_business+SB_make_lazy+SB_caring_others  
+                     +unemployed_notmotivated+SB_often_lessthanentitled
+                     +SB_often_notentitled,data=train)
+summary(cancor.train) 
+cancor.train$structure$X.xscores 
+cancor.train$structure$Y.yscores 
+#conduct CCA on validation data 
+cancor.valid<-cancor(cbind(SL_pensioners,SL_unemployed,SL_old_gvntresp,SL_unemp_gvntresp) 
+                     ~SB_strain_economy+SB_prevent_poverty+SB_equal_society  
+                     +SB_taxes_business+SB_make_lazy+SB_caring_others  
+                     +unemployed_notmotivated+SB_often_lessthanentitled
+                     +SB_often_notentitled,data=valid) 
+summary(cancor.valid) 
+cancor.valid$structure$X.xscores 
+cancor.valid$structure$Y.yscores 
+
+# canonical variates calibration set 
+train.X1<-cancor.train$score$X 
+train.Y1<-cancor.train$score$Y
+
+# compute canonical variates using data of calibration set and 
+#coefficients estimated on validation set 
+train.Y2<-as.matrix(train[,2:5])%*%cancor.valid$coef$Y
+train.X2<-as.matrix(train[,6:14])%*%cancor.valid$coef$X 
+
+#R(T,T*) and R(U,U*) 
+round(cor(train.Y1,train.Y2)[1:3,1:3],3) 
+round(cor(train.X1,train.X2)[1:3,1:3],3) 
+
+#R(U*,T*) versus R(U,T) 
+round(cor(train.X1,train.Y1)[1:3,1:3],3) 
+round(cor(train.X2,train.Y2)[1:3,1:3],3) 
+
+#R(T*,T*) and R(U*,U*) 
+round(cor(train.Y2,train.Y2)[1:3,1:3],3) 
+round(cor(train.X2,train.X2)[1:3,1:3],3) 
+
+uu1<-cancor.out$scores$X
+
+tt1<-cancor.out$scores$Y
+
+
+p1<-plot(uu1[,1],tt1[,1])
+text(uu1[,1],tt1[,1],as.factor(benefits$cntry))
+#print canonical loadings 
+cancor.out$structure$X.xscores[,1] 
+cancor.out$structure$Y.yscores[,1]
+
+
+plot(uu1[,2],tt1[,2])
+text(uu1[,2],tt1[,2],as.factor(benefits$cntry))
+cancor.out$structure$X.xscores[,2]
+cancor.out$structure$Y.yscores[,2]
+
+
+plot(uu1[,3],tt1[,3])
+text(uu1[,3],tt1[,3],as.factor(benefits$cntry))
+cancor.out$structure$X.xscores[,3]
+cancor.out$structure$Y.yscores[,3]
+
+
+plot(uu1[,4],tt1[,4])
+text(uu1[,4],tt1[,4],as.factor(benefits$cntry))
+
+```
