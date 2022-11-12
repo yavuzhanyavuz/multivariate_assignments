@@ -1,9 +1,10 @@
 ---
 title: "Assignment1"
 output:
+  pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
-  word_document: default
 date: "2022-11-11"
 ---
 
